@@ -9,6 +9,7 @@ import "./App.css";
 
 function App() {
   const svgRef = useRef<SVGElement>();
+  const [stl, setStl] = useState("");
   const [svgImage, setSVGImage] = useState<string>(
     '<svg><use xlink:href="sprite.svg#glasses--wine"></use></svg>'
   );
@@ -75,15 +76,19 @@ function App() {
           <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
           <pointLight position={[-10, -10, -10]} />
 
-          {/* <Plane mesh={{ position: [0, 1, 0] }} setStl={setStl} /> */}
-          <QROverlay svg={svgImage} />
+          <Plane
+            mesh={{ position: [0, 1, 0] }}
+            setStl={setStl}
+            svg={svgImage}
+          />
+          {/* <QROverlay svg={svgImage} /> */}
 
           <OrbitControls />
           <gridHelper args={[150, 15]} />
           <axesHelper scale={10} />
         </Canvas>
       </div>
-      <button onClick={() => console.log("hello")}>Click</button>
+      <button onClick={() => console.log(stl)}>Click</button>
     </>
   );
 }
@@ -103,7 +108,7 @@ function QROverlay({ svg }: QROverlayProps) {
   const group = new THREE.Group();
   loader.load(url, function (data) {
     const paths = data.paths;
-    group.scale.y *= -1;
+    // group.scale.y *= -1;
 
     for (let i = 0; i < paths.length; i++) {
       const path = paths[i];
@@ -120,7 +125,7 @@ function QROverlay({ svg }: QROverlayProps) {
       for (let j = 0; j < shapes.length; j++) {
         const shape = shapes[j];
         const geometry = new THREE.ExtrudeGeometry(shape, {
-          depth: 0.1,
+          depth: 1.2,
           bevelEnabled: false,
         });
         const mesh = new THREE.Mesh(geometry, material);
@@ -128,31 +133,47 @@ function QROverlay({ svg }: QROverlayProps) {
       }
     }
 
+    group.rotateX(Math.PI / 2);
+
+    group.position.set(-40, 1.2 + 2, -40);
+    const bb = new THREE.Box3().setFromObject(group);
+    const size = bb.getSize(new THREE.Vector3());
+    const position = bb.min;
+    console.log(size);
+    console.log(position);
+    const scaleFactor = (90 - 10) / 25;
+    group.scale.set(scaleFactor, scaleFactor, 1);
+
     // scene.add(group);
   });
 
-  return <primitive object={group}></primitive>;
+  return <primitive object={group} />;
 }
 
 interface PlaneProps {
   mesh: MeshProps;
   setStl: (stl: string) => void;
+  svg: string;
 }
 
-function Plane({ mesh, setStl }: PlaneProps) {
+function Plane({ mesh, setStl, svg }: PlaneProps) {
   const scene = useThree((state) => state.scene);
   const exporter = new STLExporter();
   const stlExport = exporter.parse(scene, { binary: false });
+  console.log(stlExport);
 
-  useEffect(() => {
-    setStl(stlExport);
-  }, [stlExport, setStl]);
+  // useEffect(() => {
+  //   setStl(stlExport);
+  // }, [stlExport, setStl, svg]);
 
   return (
-    <mesh {...mesh}>
-      <boxGeometry args={[100, 2, 100]} />
-      <meshStandardMaterial color="white" />
-    </mesh>
+    <group>
+      <mesh {...mesh}>
+        <boxGeometry args={[100, 2, 100]} />
+        <meshStandardMaterial color="white" />
+      </mesh>
+      <QROverlay svg={svg} />
+    </group>
   );
 }
 
